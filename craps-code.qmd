@@ -3,12 +3,7 @@ title: "Craps Simulation"
 format: html
 ---
 
-
-In this document, you should create, code, and demonstrate each function you described in [`pseudocode.qmd`](pseudocode.qmd).
-File your functions under the appropriate header. 
-Each function should have its own code chunk, which is properly set up with the appropriate programming language indicated.
-I have provided skeleton code chunks for your required functions using R syntax, but you are free to use Python or any other language covered in class. 
-Please delete or fill in my chunks with your own code.
+In this document, you should create, code, and demonstrate each function you described in [`pseudocode.qmd`](pseudocode.qmd). File your functions under the appropriate header. Each function should have its own code chunk, which is properly set up with the appropriate programming language indicated. I have provided skeleton code chunks for your required functions using R syntax, but you are free to use Python or any other language covered in class. Please delete or fill in my chunks with your own code.
 
 Make sure this document compiles before you submit your answers.
 
@@ -17,12 +12,12 @@ Make sure this document compiles before you submit your answers.
 ## `roll_dice`
 
 ```{r}
+library(dplyr)
 roll_dice <- function() {
   # Input: None
-  # Output: an integer from 1:12
+  # Output: an integer from 2:12
   # Description: Generate 2 random integers from 1 to 6 and sum them
-  
-  sample(1:6, 2, replace = T) %>% sum()
+  sample(1:6, 2, replace = TRUE) %>% sum()
 }
 ```
 
@@ -30,16 +25,54 @@ roll_dice <- function() {
 roll_dice()
 ```
 
-
-
 # Main Functions
 
 ## `simulate_craps_game`
+
 ```{r}
 simulate_craps_game <- function() {
-  # Input: 
-  # Output: 
-  # Description:
+  # Input: None
+  # Output: A data frame with columns id, roll, phase, and outcome
+  # Description: Simulates a single game of craps by rolling dice and tracking results until the game ends.
+  
+  # Initialize variables
+  rolls <- data.frame(id = integer(), roll = integer(), phase = character(), outcome = character())
+  roll_count <- 1
+  phase <- "Come-Out Roll"
+  
+  # First roll
+  roll <- roll_dice()
+  
+  # Determine outcome of Come-Out roll
+  if (roll %in% c(7, 11)) {
+    rolls <- rbind(rolls, data.frame(id = roll_count, roll = roll, phase = phase, outcome = "Win"))
+    return(rolls)
+  } else if (roll %in% c(2, 3, 12)) {
+    rolls <- rbind(rolls, data.frame(id = roll_count, roll = roll, phase = phase, outcome = "Lose"))
+    return(rolls)
+  } else {
+    point <- roll
+    rolls <- rbind(rolls, data.frame(id = roll_count, roll = roll, phase = phase, outcome = "Continue"))
+    phase <- "Point Roll"
+  }
+  
+  # Point phase
+  while (TRUE) {
+    roll_count <- roll_count + 1
+    roll <- roll_dice()
+    
+    if (roll == point) {
+      rolls <- rbind(rolls, data.frame(id = roll_count, roll = roll, phase = phase, outcome = "Win"))
+      break
+    } else if (roll == 7) {
+      rolls <- rbind(rolls, data.frame(id = roll_count, roll = roll, phase = phase, outcome = "Lose"))
+      break
+    } else {
+      rolls <- rbind(rolls, data.frame(id = roll_count, roll = roll, phase = phase, outcome = "Continue"))
+    }
+  }
+  
+  return(rolls)
 }
 ```
 
@@ -48,29 +81,58 @@ simulate_craps_game()
 ```
 
 ## `summarize_craps_game`
+
 ```{r}
-summarize_craps_game <- function() {
-  # Input: 
-  # Output: 
-  # Description:
+summarize_craps_game <- function(game_data) {
+  # Input: game_data - A data frame returned by simulate_craps_game
+  # Output: A single-row data frame summarizing the game
+  # Description: Summarizes a single game into a concise summary table.
+  
+  n_rolls <- nrow(game_data)
+  final_outcome <- tail(game_data$outcome, 1)
+  point <- ifelse(any(game_data$phase == "Point Roll"), game_data$roll[1], NA)
+  
+  summary <- data.frame(
+    n_rolls = n_rolls,
+    outcome = final_outcome,
+    point = point
+  )
+  
+  return(summary)
 }
 ```
 
 ```{r}
-simulate_craps_game() %>% summarize_craps_game()
+game_data <- simulate_craps_game()
+summarize_craps_game(game_data)
 ```
 
 ## `run_craps_simulation`
+
 ```{r}
 run_craps_simulation <- function(N) {
-  # Input: an integer N which determines the number of games to simulate
-  # Output: 
-  # Description:
+  # Input: N - Number of games to simulate
+  # Output: A data frame summarizing all simulated games
+  # Description: Simulates N games of craps and summarizes each game
+  
+  # Create an empty list to store summaries of each game
+  summaries <- vector("list", N)
+  
+  for (i in 1:N) {
+    # Simulate a single game
+    game_data <- simulate_craps_game()
+    # Summarize the game
+    summaries[[i]] <- summarize_craps_game(game_data)
+  }
+  
+  # Combine all summaries into a single data frame
+  results <- do.call(rbind, summaries)
+  
+  return(results)
 }
 ```
 
 ```{r}
-result <- run_craps_simulation(N=5) # demonstrate result
-result
+result <- run_craps_simulation(N = 5) # Simulate 5 games
+print(result)
 ```
-
