@@ -1,0 +1,193 @@
+---
+title: "Simulation"
+format: html
+editor: visual
+---
+
+# Functions
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+roll_dice <- function() {
+  # Input: None
+  # Output: an integer from 2:12
+  # Description: Generate 2 random integers from 1 to 6 and sum them
+  sample(1:6, 2, replace = TRUE) %>% sum()
+}
+
+roll_dice()
+
+simulate_craps_game <- function() {
+  # Input: None
+  # Output: A data frame with columns id, roll, phase, and outcome
+  # Description: Simulates a single game of craps by rolling dice and tracking results until the game ends.
+  
+  # Initialize variables
+  rolls <- data.frame(id = integer(), roll = integer(), phase = character(), outcome = character())
+  roll_count <- 1
+  phase <- "Come-Out Roll"
+  
+  # First roll
+  roll <- roll_dice()
+  
+  # Determine outcome of Come-Out roll
+  if (roll %in% c(7, 11)) {
+    rolls <- rbind(rolls, data.frame(id = roll_count, roll = roll, phase = phase, outcome = "Win"))
+    return(rolls)
+  } else if (roll %in% c(2, 3, 12)) {
+    rolls <- rbind(rolls, data.frame(id = roll_count, roll = roll, phase = phase, outcome = "Lose"))
+    return(rolls)
+  } else {
+    point <- roll
+    rolls <- rbind(rolls, data.frame(id = roll_count, roll = roll, phase = phase, outcome = "Continue"))
+    phase <- "Point Roll"
+  }
+  
+  # Point phase
+  while (TRUE) {
+    roll_count <- roll_count + 1
+    roll <- roll_dice()
+    
+    if (roll == point) {
+      rolls <- rbind(rolls, data.frame(id = roll_count, roll = roll, phase = phase, outcome = "Win"))
+      break
+    } else if (roll == 7) {
+      rolls <- rbind(rolls, data.frame(id = roll_count, roll = roll, phase = phase, outcome = "Lose"))
+      break
+    } else {
+      rolls <- rbind(rolls, data.frame(id = roll_count, roll = roll, phase = phase, outcome = "Continue"))
+    }
+  }
+  
+  return(rolls)
+}
+
+simulate_craps_game()
+
+summarize_craps_game <- function(game_data) {
+  # Input: game_data - A data frame returned by simulate_craps_game
+  # Output: A single-row data frame summarizing the game
+  # Description: Summarizes a single game into a concise summary table.
+  
+  n_rolls <- nrow(game_data)
+  final_outcome <- tail(game_data$outcome, 1)
+  point <- ifelse(any(game_data$phase == "Point Roll"), game_data$roll[1], NA)
+  
+  summary <- data.frame(
+    n_rolls = n_rolls,
+    outcome = final_outcome,
+    point = point
+  )
+  
+  return(summary)
+}
+
+game_data <- simulate_craps_game()
+summarize_craps_game(game_data)
+
+run_craps_simulation <- function(N) {
+  # Input: N - Number of games to simulate
+  # Output: A data frame summarizing all simulated games
+  # Description: Simulates N games of craps and summarizes each game
+  
+  # Create an empty list to store summaries of each game
+  summaries <- vector("list", N)
+  
+  for (i in 1:N) {
+    # Simulate a single game
+    game_data <- simulate_craps_game()
+    # Summarize the game
+    summaries[[i]] <- summarize_craps_game(game_data)
+  }
+  
+  # Combine all summaries into a single data frame
+  results <- do.call(rbind, summaries)
+  
+  return(results)
+}
+
+result <- run_craps_simulation(N = 5) # Simulate 5 games
+print(result)
+```
+
+# Simulation Question:
+
+What is the expected number of rolls needed to complete a Craps game, and how does this vary based on the initial point value established in the Come-Out Roll?
+
+## `analyze_game_length`
+
+Additional function to track game lengths by initial point.
+
+```{r}
+analyze_game_length <- function(N) {
+  results <- vector("list", N)
+  
+  for (i in 1:N) {
+    game_data <- simulate_craps_game()
+    
+    # Determine initial point
+    initial_point <- if (nrow(game_data) > 1 && 
+                         any(game_data$phase == "Point Roll") && 
+                         game_data$outcome[1] == "Continue") {
+      game_data$roll[1]
+    } else {
+      NA
+    }
+    
+    results[[i]] <- data.frame(
+      game_length = nrow(game_data),
+      initial_point = initial_point,
+      outcome = tail(game_data$outcome, 1)
+    )
+  }
+  
+  # Combine results
+  combined_results <- do.call(rbind, results)
+  return(combined_results)
+}
+```
+
+## Simulation Answer
+
+```{r}
+# Run simulation
+set.seed(123) # Make results reproducable for analysis
+N <- 10000
+game_lengths <- analyze_game_length(N)
+
+# Analyze game lengths by initial point
+length_by_point <- game_lengths %>%
+  filter(!is.na(initial_point)) %>%
+  group_by(initial_point) %>%
+  summarise(
+    avg_game_length = mean(game_length),
+    median_game_length = median(game_length),
+    win_rate = sum(outcome == "Win") / n(),
+    total_games = n()
+  ) %>%
+  arrange(initial_point)
+
+# Visualization
+ggplot(length_by_point, aes(x = factor(initial_point), y = avg_game_length)) +
+  geom_bar(stat = "identity", fill = "#26e5dd", color = "black") + # geom
+  geom_text(aes(label = round(avg_game_length, 2)), 
+            position = position_dodge(width = 0.9), 
+            vjust = -0.5) +
+  labs(
+    title = "Average Game Length by Initial Point in Craps",
+    x = "Initial Point",
+    y = "Average Number of Rolls"
+  ) +
+  theme_minimal()
+
+# Correlation analysis
+correlation <- cor(length_by_point$initial_point, length_by_point$avg_game_length)
+
+# Print results
+print(length_by_point)
+print(paste("Correlation between initial point and game length:", round(correlation, 4)))
+```
+
+The code above simulates 10,000 games of Craps. Point 8 has the highest win rate at about 48.3%, while point 10 has the lowest win rate at approximately 33.2%. Game lengths show varying results, with points 4 and 10 having the longest average game length at 5.04 and 5.03 rolls respectively, rolls and point 6 having the shortest at 4.16 rolls, but all initial points have an average of between 4 and 5 rolls. There is a weak correlation of 0.1556 between the initial point and game length, showing that Craps is fundamentally a game of chance, despite having a subtle pattern. Initial conditions may subtly influence game progression, but they do not definitively predict it. In conclusion, the expected number of rolls needed to complete a Craps game is between 4 and 5 rolls on average, regardless of the initial point value established in the Come-Out Roll
