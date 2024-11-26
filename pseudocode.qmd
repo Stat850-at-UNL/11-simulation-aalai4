@@ -112,7 +112,7 @@ What additional columns do you need?
 Hint: Each roll of the 2 dice should be a row.
 
 | **Roll Number** | **Die 1** | **Die 2** | **Total Roll** | **Phase**     | **Outcome** |
-|------------|------------|------------|------------|------------|------------|
+|-----------------|-----------|-----------|----------------|---------------|-------------|
 | 1               | 3         | 4         | 7              | Come-Out Roll | Win         |
 | 2               | 2         | 5         | 7              | Point Roll    | Lose        |
 | ...             | ...       | ...       | ...            | ...           | ...         |
@@ -123,7 +123,7 @@ Draw/sketch a summary tabular data structure to store summary information from a
 Hint: Each game of craps should yield a single row in your table.
 
 | **Game ID** | **Total Rolls** | **Come-Out Result** | **Point Established** | **Point Value** | **Final Outcome** | **Rolls During Point Phase** |
-|-----------|-----------|-----------|-----------|-----------|-----------|-----------|
+|-------------|-----------------|---------------------|-----------------------|-----------------|-------------------|------------------------------|
 | 1           | 5               | Lose                | Yes                   | 8               | Win               | 3                            |
 | 2           | 3               | Win                 | No                    | N/A             | Win               | 0                            |
 | 3           | 7               | Win                 | Yes                   | 5               | Lose              | 5                            |
